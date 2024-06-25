@@ -29,7 +29,15 @@ license {
     ],
 }
 
-cc_defaults {
+soong_config_module_type {
+    name: "hwservicemanager_defaults",
+    module_type: "cc_defaults",
+    config_namespace: "hwservicemanager",
+    bool_variables: ["need_no_selinux_hack"],
+    properties: ["cflags"],
+}
+
+hwservicemanager_defaults {
     name: "hwservicemanager_defaults",
     cflags: [
         "-Wall",
@@ -40,6 +48,13 @@ cc_defaults {
         "libhidlbase",
         "liblog",
     ],
+    soong_config_variables: {
+        need_no_selinux_hack: {
+            cflags: [
+                "-DNO_SELINUX_HACK",
+            ],
+        },
+    },
 }
 
 cc_defaults {

@@ -37,12 +37,14 @@ struct audit_data {
 using android::FQName;
 
 AccessControl::AccessControl() {
+#ifndef NO_SELINUX_HACK
     mSeHandle = selinux_android_hw_service_context_handle();
     LOG_ALWAYS_FATAL_IF(mSeHandle == nullptr, "Failed to acquire SELinux handle.");
 
     if (getcon(&mSeContext) != 0) {
         LOG_ALWAYS_FATAL("Failed to acquire hwservicemanager context.");
     }
+#endif
 
     selinux_status_open(true);
 
@@ -92,7 +94,7 @@ AccessControl::CallingContext AccessControl::getCallingContext(pid_t sourcePid) 
     return { true, context, sourcePid };
 }
 
-bool AccessControl::checkPermission(const CallingContext& source, const char *targetContext, const char *perm, const char *interface) {
+bool AccessControl::checkPermission(const CallingContext& source, const char *targetContext __unused, const char *perm __unused, const char *interface) {
     if (!source.sidPresent) {
         return false;
     }
@@ -104,8 +106,12 @@ bool AccessControl::checkPermission(const CallingContext& source, const char *ta
     ad.sid = source.sid.c_str();
     ad.interfaceName = interface;
 
+#ifdef NO_SELINUX_HACK
+    allowed = true;
+#else
     allowed = (selinux_check_access(source.sid.c_str(), targetContext, "hwservice_manager",
                                     perm, (void *) &ad) == 0);
+#endif
 
     return allowed;
 }
@@ -114,11 +120,13 @@ bool AccessControl::checkPermission(const CallingContext& source, const char *pe
     char *targetContext = nullptr;
     bool allowed = false;
 
+#ifndef NO_SELINUX_HACK
     // Lookup service in hwservice_contexts
     if (selabel_lookup(mSeHandle, &targetContext, interface, 0) != 0) {
         ALOGE("No match for interface %s in hwservice_contexts", interface);
         return false;
     }
+#endif
 
     allowed = checkPermission(source, targetContext, perm, interface);
 

@@ -40,7 +40,11 @@ AccessControl::CallingContext getBinderCallingContext() {
     const auto& self = IPCThreadState::self();
 
     pid_t pid = self->getCallingPid();
+#ifdef NO_SELINUX_HACK
+    const char* sid = ""; /*self->getCallingSid();*/
+#else
     const char* sid = self->getCallingSid();
+#endif
 
     if (sid == nullptr) {
         if (pid != getpid()) {
